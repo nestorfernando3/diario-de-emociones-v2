@@ -381,79 +381,39 @@ function TriggersSection({ mood, emotions, setEmotions }) {
   );
 }
 
-function PrivacySection({ mood, cloudSyncEnabled, setCloudSyncEnabled, session, signOut, openAuthModal }) {
-  const [eraseConfirm, setEraseConfirm] = useState('');
-  const isEraseValid = eraseConfirm.toLowerCase() === 'erase';
-
-  const exportData = () => {
-    const rawData = localStorage.getItem('diario_settings');
-    if (!rawData) return;
-
-    // Create a Blob containing the JSON data
-    const blob = new Blob([rawData], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    // Create a temporary anchor element and trigger download
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `diario-export-${new Date().getTime()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const eraseData = () => {
-    if (isEraseValid) {
-      localStorage.removeItem('diario_settings');
-      window.location.reload();
-    }
-  };
-
-  const handleToggleSync = () => {
-    if (!cloudSyncEnabled) {
-      // Trying to turn ON
-      if (!session) {
-        openAuthModal();
-      } else {
-        setCloudSyncEnabled(true);
-      }
-    } else {
-      // Turning OFF
-      setCloudSyncEnabled(false);
-    }
-  };
-
+function PrivacySection({ mood, session, signOut, openAuthModal }) {
   const handleSignOut = async () => {
     await signOut();
-    setCloudSyncEnabled(false);
   };
 
   return (
     <div className="space-y-12">
       <header>
-        <h2 className="text-2xl font-medium mb-2">Privacy & The Vault</h2>
-        <p className="opacity-60">Control who sees your thoughts and how your data is stored.</p>
+        <h2 className="text-2xl font-medium mb-2">Cloud Auth & Privacy</h2>
+        <p className="opacity-60">Manage your secure cloud vault session.</p>
       </header>
 
       <div className="space-y-10 max-w-2xl">
-        {/* Cloud Sync */}
+        {/* Authentication State */}
         <div className="flex flex-col gap-4 p-6 rounded-[2rem] bg-black/5">
           <div className="flex items-start justify-between">
             <div className="max-w-md pr-8">
               <h3 className="font-medium flex items-center gap-2 mb-1">
-                <Cloud size={18} /> Storage Preference
+                <Cloud size={18} /> Supabase Vault
               </h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                When synced to the cloud, your journal is securely backed up and available across devices. Local only means it never leaves this browser.
+                Your journal data is entirely cloud-based. You must be authenticated to securely write and sync entries to your vault.
               </p>
             </div>
-            <button
-              onClick={handleToggleSync}
-              className={`relative w-14 h-8 shrink-0 rounded-full transition-colors duration-300 ease-in-out ${cloudSyncEnabled ? 'bg-green-500/80' : 'bg-black/20'}`}
-            >
-              <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${cloudSyncEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
+
+            {!session && (
+              <button
+                onClick={openAuthModal}
+                className="px-6 py-2 rounded-full font-medium transition-all duration-300 bg-[#2E4036] text-white hover:bg-[#1A2E24] shadow-md"
+              >
+                Authenticate
+              </button>
+            )}
           </div>
 
           {session && (
@@ -462,52 +422,10 @@ function PrivacySection({ mood, cloudSyncEnabled, setCloudSyncEnabled, session, 
                 Logged in as: <strong>{session.user.email}</strong>
               </div>
               <button onClick={handleSignOut} className="text-xs flex items-center gap-1 font-medium opacity-60 hover:opacity-100 transition-opacity text-red-600">
-                <LogOut size={14} /> Disconnect
+                <LogOut size={14} /> Disconnect Vault
               </button>
             </div>
           )}
-        </div>
-
-        {/* Data Actions */}
-        <div className="space-y-4 pt-4 border-t border-black/10">
-          <h3 className="text-sm font-medium opacity-50 uppercase tracking-wider mb-4">Your Data, Your Rules</h3>
-
-          <button onClick={exportData} className="flex items-center gap-3 px-6 py-4 w-full rounded-[1.5rem] border border-black/10 hover:bg-black/5 transition-all hover:-translate-y-0.5">
-            <Download size={18} className="opacity-70" />
-            <div className="text-left">
-              <div className="font-medium">Export my Journal</div>
-              <div className="text-xs opacity-60">Download your settings and local environment as a raw JSON file.</div>
-            </div>
-          </button>
-
-          <div className="p-6 rounded-[1.5rem] border border-red-500/20 bg-red-500/5 group transition-colors focus-within:bg-red-500/10">
-            <div className="flex items-start gap-4 mb-4">
-              <Trash2 size={24} className="text-red-500/70 shrink-0" />
-              <div>
-                <div className="font-medium text-red-500/90">Erase all data</div>
-                <div className="text-xs opacity-70 mt-1 max-w-md">
-                  This action is irreversible. To confirm, please type the word <strong>"erase"</strong> below.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 md:pl-10">
-              <input
-                type="text"
-                value={eraseConfirm}
-                onChange={(e) => setEraseConfirm(e.target.value)}
-                placeholder="Type 'erase'..."
-                className="bg-transparent border-b border-red-500/30 focus:border-red-500 outline-none px-2 py-1 text-red-500 w-32 transition-colors"
-              />
-              <button
-                disabled={!isEraseValid}
-                onClick={eraseData}
-                className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${isEraseValid ? 'bg-red-500 text-white shadow-lg hover:bg-red-600 hover:scale-105' : 'bg-black/5 text-black/30 cursor-not-allowed'}`}
-              >
-                Burn the journal
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
