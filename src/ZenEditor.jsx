@@ -143,46 +143,45 @@ export default function ZenEditor() {
       </div>
 
       {/* Surrounding UI (Fades out when typing) */}
-      <div ref={surroundingUiRef} className="w-full max-w-3xl flex flex-col items-center z-20 space-y-12 mb-8">
-        <h2 className="text-xl md:text-2xl font-light opacity-60 flex items-center gap-3">
-          <Edit3 size={18} className="opacity-50" />
-          <span>Refugio de Pensamientos</span>
+      <div ref={surroundingUiRef} className="w-full max-w-3xl flex flex-col items-center z-20 space-y-10 mb-12">
+        <h2 className="text-xs md:text-sm uppercase tracking-widest opacity-50 font-sans font-medium flex items-center gap-2 mb-2">
+          Paso 1: Identifica tu emoción
         </h2>
 
-        {/* Emotional Anchoring Slider */}
-        <div className="flex gap-4 items-center">
+        {/* Emotional Anchoring Selector */}
+        <div className="flex gap-3 md:gap-5 items-center bg-white/30 backdrop-blur-xl p-3 rounded-[2.5rem] shadow-sm border border-black/5">
           {EMOTIONAL_ANCHORS.map(anchor => (
             <button
               key={anchor.id}
               onClick={() => setSelectedEmotion(anchor.id)}
               className={`
-                w-14 h-14 md:w-16 md:h-16 rounded-[2rem] flex items-center justify-center text-2xl transition-all duration-500 ease-out
+                relative group flex flex-col items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full text-2xl transition-all duration-400 ease-out
                 ${anchor.color} 
-                ${selectedEmotion === anchor.id ? 'scale-110 shadow-lg ring-2 ring-white ring-offset-2 ring-offset-[#FAF8F5]' : 'opacity-70 hover:scale-105 hover:opacity-100'}
+                ${selectedEmotion === anchor.id ? 'scale-110 shadow-lg ring-4 ring-white ring-offset-1 ring-offset-[#FAF8F5] opacity-100' : 'opacity-60 hover:scale-105 hover:opacity-100'}
               `}
-              title={anchor.label}
             >
-              <span className="opacity-80 mix-blend-multiply">{anchor.icon}</span>
+              <span className="opacity-90 mix-blend-multiply">{anchor.icon}</span>
+
+              {/* Custom Tooltip */}
+              <div className="absolute -bottom-10 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-xs px-3 py-1.5 rounded-lg pointer-events-none whitespace-nowrap z-50">
+                {anchor.label.split(' (')[0]}
+              </div>
             </button>
           ))}
         </div>
       </div>
 
       {/* Main Zen Editor Area */}
-      <div ref={editorContainerRef} className="w-full max-w-3xl z-20 relative">
+      <div ref={editorContainerRef} className="w-full max-w-3xl z-20 relative group/editor">
         <div className="relative">
-          {/* Subtle Placeholder that cycles */}
-          {!content && (
-            <div className="absolute top-0 left-0 w-full pointer-events-none transition-opacity duration-1000 opacity-40 text-2xl md:text-3xl lg:text-4xl leading-relaxed text-center font-light">
-              {EMPATHETIC_PROMPTS[activePrompt]}
-            </div>
-          )}
+          <div className="absolute -inset-8 bg-white/40 blur-2xl rounded-[3rem] opacity-0 group-focus-within/editor:opacity-100 transition-opacity duration-1000 pointer-events-none" />
 
           <textarea
             ref={textareaRef}
             value={content}
             onChange={handleInput}
-            className="w-full bg-transparent outline-none resize-none text-2xl md:text-3xl lg:text-4xl leading-relaxed text-[#2A2A35] font-light min-h-[200px] text-center"
+            placeholder={EMPATHETIC_PROMPTS[activePrompt]}
+            className="w-full bg-transparent outline-none resize-none text-2xl md:text-4xl leading-relaxed text-[#2A2A35] font-light min-h-[200px] text-center placeholder:text-black/20 placeholder:transition-opacity relative z-10 p-4"
             style={{ overflow: 'hidden' }}
           />
         </div>

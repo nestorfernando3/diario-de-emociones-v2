@@ -89,7 +89,7 @@ export default function Landing({ onEnter }) {
                         end: "top 50%",
                         pin: true,
                         pinSpacing: false,
-                        animation: gsap.to(card, { scale: 0.9, opacity: 0.5, filter: "blur(4px)", duration: 0.5 }),
+                        animation: gsap.to(card, { scale: 0.9, opacity: 0, filter: "blur(10px)", duration: 0.5 }),
                         scrub: true
                     });
                 }
@@ -146,11 +146,12 @@ export default function Landing({ onEnter }) {
 
             {/* 2. Hero Section */}
             <section ref={heroRef} className="relative w-full h-[100dvh] flex items-end pb-20 px-8 md:px-16 overflow-hidden">
-                {/* Full-bleed Unsplash Image (Organic Tech Mood) */}
+                {/* Full-bleed Generated Image */}
                 <div className="absolute inset-0 z-0">
                     <img
-                        src="https://images.unsplash.com/photo-1542273917363-3b1817f69a5d?q=80&w=2674&auto=format&fit=crop"
-                        alt="Organic Forest"
+                        src="/diario-de-emociones-v2/hero.png" // Path works for GH Pages when placed in public/
+                        onError={(e) => { e.target.src = '/hero.png' }} // Fallback for local dev
+                        alt="Serene Organic Forest"
                         className="w-full h-full object-cover opacity-90"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#F2F0E9] via-[#F2F0E9]/40 to-transparent" />

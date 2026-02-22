@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 
 import Landing from './Landing';
@@ -7,16 +7,38 @@ import ZenEditor from './ZenEditor';
 import EmotionalMap from './EmotionalMap';
 import CalmAnchor from './CalmAnchor';
 import FirstAidKit from './FirstAidKit';
+import AuthModal from './AuthModal';
+import { useAuth } from './contexts/AuthContext';
 
 function App() {
+    const { session } = useAuth();
     const [currentView, setCurrentView] = useState('landing');
     const [isFirstAidOpen, setIsFirstAidOpen] = useState(false);
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+    // Watch for successful login to redirect
+    useEffect(() => {
+        if (session && isAuthModalOpen) {
+            setIsAuthModalOpen(false);
+            if (currentView === 'landing') {
+                setCurrentView('editor');
+            }
+        }
+    }, [session, isAuthModalOpen, currentView]);
+
+    const handleNavigation = (view) => {
+        if (view !== 'landing' && !session) {
+            setIsAuthModalOpen(true);
+        } else {
+            setCurrentView(view);
+        }
+    };
 
     // Simple Router
     const renderView = () => {
         switch (currentView) {
             case 'landing':
-                return <Landing onEnter={() => setCurrentView('editor')} />;
+                return <Landing onEnter={() => handleNavigation('editor')} />;
             case 'editor':
                 return <ZenEditor />;
             case 'history':
@@ -24,7 +46,7 @@ function App() {
             case 'settings':
                 return <Settings />;
             default:
-                return <Landing onEnter={() => setCurrentView('editor')} />;
+                return <Landing onEnter={() => handleNavigation('editor')} />;
         }
     };
 
@@ -32,36 +54,36 @@ function App() {
         <div className="relative min-h-screen">
             {/* Global Navigation that appears when not on landing page */}
             {currentView !== 'landing' && (
-                <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white/40 backdrop-blur-xl px-6 py-3 rounded-full flex items-center gap-6 shadow-sm border border-black/5 text-[#2A2A35]/80 text-sm font-medium transition-all hover:bg-white/60">
+                <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white/40 backdrop-blur-xl px-4 md:px-6 py-3 rounded-full flex items-center gap-4 md:gap-6 shadow-sm border border-black/5 text-[#2A2A35]/80 text-sm font-medium transition-all hover:bg-white/60">
 
                     <button
-                        onClick={() => setCurrentView('editor')}
+                        onClick={() => handleNavigation('editor')}
                         className={`transition-colors ${currentView === 'editor' ? 'text-[#CC5833]' : 'hover:text-[#1A1A1A]'}`}
                     >
                         Refugio
                     </button>
 
                     <button
-                        onClick={() => setCurrentView('history')}
+                        onClick={() => handleNavigation('history')}
                         className={`transition-colors ${currentView === 'history' ? 'text-[#CC5833]' : 'hover:text-[#1A1A1A]'}`}
                     >
                         Mapa
                     </button>
 
                     <button
-                        onClick={() => setCurrentView('settings')}
+                        onClick={() => handleNavigation('settings')}
                         className={`transition-colors ${currentView === 'settings' ? 'text-[#CC5833]' : 'hover:text-[#1A1A1A]'}`}
                     >
                         Configuración
                     </button>
 
-                    <div className="w-px h-4 bg-black/10 mx-2" />
+                    <div className="w-px h-4 bg-black/10 mx-1 md:mx-2" />
 
                     <button
-                        onClick={() => setCurrentView('landing')}
-                        className="flex items-center gap-2 hover:text-[#1A1A1A] transition-colors opacity-60 hover:opacity-100"
+                        onClick={() => handleNavigation('landing')}
+                        className="flex items-center gap-1 md:gap-2 hover:text-[#1A1A1A] transition-colors opacity-60 hover:opacity-100"
                     >
-                        <ArrowLeft size={14} /> Salir
+                        <ArrowLeft size={14} /> <span className="hidden md:inline">Salir</span>
                     </button>
 
                 </nav>
@@ -72,8 +94,9 @@ function App() {
                 <CalmAnchor onClick={() => setIsFirstAidOpen(true)} />
             )}
 
-            {/* The Emotional First Aid Modal */}
+            {/* Modals */}
             <FirstAidKit isOpen={isFirstAidOpen} onClose={() => setIsFirstAidOpen(false)} />
+            <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
             {/* Main Content Area */}
             {renderView()}
