@@ -69,6 +69,8 @@ export default function AuthModal({ isOpen, onClose }) {
                                 <Mail size={18} />
                             </div>
                             <input
+                                id="email"
+                                name="email"
                                 type="email"
                                 required
                                 value={email}
@@ -83,6 +85,8 @@ export default function AuthModal({ isOpen, onClose }) {
                                 <Lock size={18} />
                             </div>
                             <input
+                                id="password"
+                                name="password"
                                 type="password"
                                 required
                                 value={password}

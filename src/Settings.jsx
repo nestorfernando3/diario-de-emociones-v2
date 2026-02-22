@@ -261,8 +261,10 @@ function ProfileSection({ mood, profile, setProfile }) {
 
         <div className="space-y-6">
           <div className="group">
-            <label className="block text-xs font-medium opacity-50 uppercase tracking-wider mb-2 transition-opacity group-focus-within:opacity-100">Preferred Name</label>
+            <label htmlFor="profileName" className="block text-xs font-medium opacity-50 uppercase tracking-wider mb-2 transition-opacity group-focus-within:opacity-100">Preferred Name</label>
             <input
+              id="profileName"
+              name="profileName"
               type="text"
               value={profile.name}
               onChange={(e) => setProfile({ ...profile, name: e.target.value })}
@@ -272,8 +274,10 @@ function ProfileSection({ mood, profile, setProfile }) {
           </div>
 
           <div className="group">
-            <label className="block text-xs font-medium opacity-50 uppercase tracking-wider mb-2 transition-opacity group-focus-within:opacity-100">Pronouns</label>
+            <label htmlFor="profilePronouns" className="block text-xs font-medium opacity-50 uppercase tracking-wider mb-2 transition-opacity group-focus-within:opacity-100">Pronouns</label>
             <input
+              id="profilePronouns"
+              name="profilePronouns"
               type="text"
               value={profile.pronouns}
               onChange={(e) => setProfile({ ...profile, pronouns: e.target.value })}
@@ -361,7 +365,10 @@ function TriggersSection({ mood, emotions, setEmotions }) {
         </div>
 
         <form onSubmit={addEmotion} className="flex items-center gap-4 max-w-sm">
+          <label htmlFor="newEmotion" className="sr-only">New Emotion Name</label>
           <input
+            id="newEmotion"
+            name="newEmotion"
             type="text"
             value={newEmotion}
             onChange={(e) => setNewEmotion(e.target.value)}
