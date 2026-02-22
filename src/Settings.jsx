@@ -63,50 +63,57 @@ export default function Settings() {
   const [initDone, setInitDone] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Initialize unified state from localStorage
-  const loadStoredSettings = () => {
-    try {
-      const stored = localStorage.getItem('diario_settings');
-      if (stored) return JSON.parse(stored);
-    } catch (e) {
-      console.error("Failed to parse settings", e);
-    }
-    return null;
-  };
-
-  const initialSettings = loadStoredSettings();
-
-  const [mood, setMood] = useState(initialSettings?.mood || MOODS[0]);
-  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(initialSettings?.cloudSyncEnabled !== undefined ? initialSettings.cloudSyncEnabled : true);
-  const [profile, setProfile] = useState(initialSettings?.profile || { name: 'Nestor', pronouns: 'he/him', color: '#E5A9A9' });
-  const [emotions, setEmotions] = useState(initialSettings?.emotions || ['Joy', 'Anxiety', 'Grateful', 'Exhausted']);
-  const [notifications, setNotifications] = useState(initialSettings?.notifications || { enabled: false, hour: '20', minute: '00' });
+  // Cloud-only State
+  const [mood, setMood] = useState(MOODS[0]);
+  const [profile, setProfile] = useState({ name: 'Nestor', pronouns: 'he/him', color: '#E5A9A9' });
+  const [emotions, setEmotions] = useState(['Joy', 'Anxiety', 'Grateful', 'Exhausted']);
+  const [notifications, setNotifications] = useState({ enabled: false, hour: '20', minute: '00' });
 
   const contentRef = useRef(null);
   const skipFirstSync = useRef(true);
 
-  // Unified Local Storage & Cloud Sync Effect
+  // Fetch settings from Cloud on Session Load
   useEffect(() => {
-    if (!initDone) {
+    const fetchProfile = async () => {
+      if (session?.user?.id) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (data && !error) {
+          if (data.name) setProfile({ name: data.name, pronouns: data.pronouns || 'he/him', color: data.color || '#E5A9A9' });
+          if (data.emotions) setEmotions(data.emotions);
+          if (data.notifications) setNotifications(data.notifications);
+        }
+      } else {
+        // Reset to defaults if logged out
+        setProfile({ name: 'Nestor', pronouns: 'he/him', color: '#E5A9A9' });
+        setEmotions(['Joy', 'Anxiety', 'Grateful', 'Exhausted']);
+        setNotifications({ enabled: false, hour: '20', minute: '00' });
+      }
       setInitDone(true);
-      return;
-    }
+    };
 
-    const currentState = { mood, cloudSyncEnabled, profile, emotions, notifications };
+    fetchProfile();
+  }, [session]);
 
-    // 1. Local-First Synchronization
-    localStorage.setItem('diario_settings', JSON.stringify(currentState));
+  // Cloud Sync Effect (Triggered on changes if authenticated)
+  useEffect(() => {
+    if (!initDone) return;
 
-    // 2. Cloud Sync if Enabled and Authenticated
+    const currentState = { mood, profile, emotions, notifications };
+
     if (skipFirstSync.current) {
       skipFirstSync.current = false;
       return;
     }
 
-    if (cloudSyncEnabled && session) {
+    if (session) {
       syncProfileToCloud(session, currentState);
     }
-  }, [mood, cloudSyncEnabled, profile, emotions, notifications, initDone, session]);
+  }, [mood, profile, emotions, notifications, initDone, session]);
 
   // Transition between tabs
   useEffect(() => {
@@ -140,11 +147,11 @@ export default function Settings() {
         </svg>
       </div>
 
-      {/* Offline/No-Cloud Indicator */}
-      {!cloudSyncEnabled && (
+      {/* Cloud-Only Logged Out Indicator */}
+      {!session && (
         <div className="absolute top-6 right-6 flex items-center gap-2 text-xs font-medium opacity-60 bg-black/5 px-4 py-2 rounded-full backdrop-blur-md z-50 transition-opacity">
           <CloudOff size={14} />
-          <span>Local Only / Offline</span>
+          <span>Not Authenticated</span>
         </div>
       )}
 
