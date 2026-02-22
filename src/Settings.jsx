@@ -1,0 +1,498 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import {
+  User,
+  Palette,
+  Heart,
+  Shield,
+  Bell,
+  Cloud,
+  CloudOff,
+  HardDrive,
+  Download,
+  Trash2,
+  Plus,
+  X,
+  Clock
+} from 'lucide-react';
+
+const MENU_ITEMS = [
+  { id: 'profile', label: 'Identity & Presence', icon: User, desc: 'How you appear in your safe space' },
+  { id: 'aesthetic', label: 'The Atmosphere', icon: Palette, desc: 'Your visual environment' },
+  { id: 'triggers', label: 'Emotional Vocabulary', icon: Heart, desc: 'Words that define your feelings' },
+  { id: 'privacy', label: 'Privacy & The Vault', icon: Shield, desc: 'Security for your thoughts' },
+  { id: 'notifications', label: 'Gentle Nudges', icon: Bell, desc: 'Reminders to breathe and reflect' }
+];
+
+const MOODS = [
+  { id: 'organic', name: 'Organic Tech', bg: 'bg-[#F2F0E9]', cardBg: 'bg-[#F2F0E9]/80', text: 'text-[#1A1A1A]', primary: '#2E4036', accent: '#CC5833' },
+  { id: 'midnight', name: 'Midnight Luxe', bg: 'bg-[#0D0D12]', cardBg: 'bg-[#0D0D12]/80', text: 'text-[#FAF8F5]', primary: '#C9A84C', accent: '#C9A84C' },
+  { id: 'brutalist', name: 'Brutalist Signal', bg: 'bg-[#F5F3EE]', cardBg: 'bg-[#F5F3EE]/90', text: 'text-[#111111]', primary: '#E8E4DD', accent: '#E63B2E' },
+  { id: 'vapor', name: 'Vapor Clinic', bg: 'bg-[#F0EFF4]', cardBg: 'bg-[#F0EFF4]/80', text: 'text-[#18181B]', primary: '#0A0A14', accent: '#7B61FF' }
+];
+
+// Mock BaaS logic mimicking Supabase/Firebase RLS
+const MOCK_USER_ID = "usr_94b8e3a2";
+const mockCloudSync = async (payload) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`[BaaS Sync] Secured transaction for user: ${MOCK_USER_ID}`);
+      console.log(`[BaaS Sync] Unified Payload Saved:`, payload);
+      resolve({ status: "success" });
+    }, 600);
+  });
+};
+
+export default function Settings() {
+  const [activeTab, setActiveTab] = useState('profile');
+  const [initDone, setInitDone] = useState(false);
+
+  // Initialize unified state from localStorage
+  const loadStoredSettings = () => {
+    try {
+      const stored = localStorage.getItem('diario_settings');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse settings", e);
+    }
+    return null;
+  };
+
+  const initialSettings = loadStoredSettings();
+
+  const [mood, setMood] = useState(initialSettings?.mood || MOODS[0]);
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(initialSettings?.cloudSyncEnabled !== undefined ? initialSettings.cloudSyncEnabled : true);
+  const [profile, setProfile] = useState(initialSettings?.profile || { name: 'Nestor', pronouns: 'he/him', color: '#E5A9A9' });
+  const [emotions, setEmotions] = useState(initialSettings?.emotions || ['Joy', 'Anxiety', 'Grateful', 'Exhausted']);
+  const [notifications, setNotifications] = useState(initialSettings?.notifications || { enabled: false, hour: '20', minute: '00' });
+
+  const contentRef = useRef(null);
+  const skipFirstSync = useRef(true);
+
+  // Unified Local Storage & Cloud Sync Effect
+  useEffect(() => {
+    if (!initDone) {
+      setInitDone(true);
+      return;
+    }
+
+    const currentState = { mood, cloudSyncEnabled, profile, emotions, notifications };
+
+    // 1. Local-First Synchronization
+    localStorage.setItem('diario_settings', JSON.stringify(currentState));
+
+    // 2. Cloud Sync if Enabled
+    // We skip the sync on the very first render block to avoid unnecessary network calls
+    if (skipFirstSync.current) {
+      skipFirstSync.current = false;
+      return;
+    }
+
+    if (cloudSyncEnabled) {
+      mockCloudSync(currentState).catch(err => console.error("Cloud Error", err));
+    }
+  }, [mood, cloudSyncEnabled, profile, emotions, notifications, initDone]);
+
+  // Transition between tabs
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(contentRef.current,
+        { y: 10, opacity: 0, filter: 'blur(4px)' },
+        { y: 0, opacity: 1, filter: 'blur(0px)', duration: 0.6, ease: 'power3.out' }
+      );
+    }, contentRef);
+    return () => ctx.revert();
+  }, [activeTab]);
+
+  // Background Mood Transition
+  useEffect(() => {
+    gsap.to('.app-background', {
+      backgroundColor: mood.bg.replace('bg-[', '').replace(']', ''),
+      duration: 1.2,
+      ease: 'power2.inOut'
+    });
+  }, [mood]);
+
+  return (
+    <div className={`min-h-screen w-full transition-colors duration-1000 ${mood.bg} ${mood.text} font-sans relative overflow-hidden flex items-center justify-center p-4 md:p-8 app-background`}>
+      {/* Global CSS Noise Overlay */}
+      <div className="pointer-events-none fixed inset-0 z-50 opacity-[0.03] mix-blend-overlay">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <filter id="noiseFilter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+        </svg>
+      </div>
+
+      {/* Offline/No-Cloud Indicator */}
+      {!cloudSyncEnabled && (
+        <div className="absolute top-6 right-6 flex items-center gap-2 text-xs font-medium opacity-60 bg-black/5 px-4 py-2 rounded-full backdrop-blur-md z-50 transition-opacity">
+          <CloudOff size={14} />
+          <span>Local Only / Offline</span>
+        </div>
+      )}
+
+      <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-12 gap-8 relative z-10">
+
+        {/* Navigation Sidebar */}
+        <nav className="md:col-span-4 lg:col-span-3 flex flex-col gap-2">
+          <div className="mb-8 px-4">
+            <h1 className="text-3xl font-medium tracking-tight mb-2">Configuration</h1>
+            <p className="text-sm opacity-60">Mold this space to your comfort.</p>
+          </div>
+
+          <div className="flex flex-row md:flex-col overflow-x-auto md:overflow-visible pb-4 md:pb-0 hide-scrollbar gap-2">
+            {MENU_ITEMS.map((item) => {
+              const isActive = activeTab === item.id;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`
+                    flex items-center gap-4 px-4 py-4 rounded-[2rem] text-left transition-all duration-500 min-w-[200px] md:min-w-0
+                    ${isActive ? `bg-white/10 backdrop-blur-md shadow-sm border-l-4` : 'hover:bg-black/5 hover:translate-y-[-1px] border-l-4 border-transparent opacity-70'}
+                  `}
+                  style={{ borderLeftColor: isActive ? mood.accent : 'transparent' }}
+                >
+                  <div className={`p-2 rounded-full ${isActive ? 'bg-black/5' : ''}`}>
+                    <Icon size={20} strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm md:text-base">{item.label}</div>
+                    <div className="text-xs opacity-60 hidden md:block mt-0.5">{item.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* Main Content Area */}
+        <main className="md:col-span-8 lg:col-span-9">
+          <div
+            ref={contentRef}
+            className={`w-full min-h-[600px] p-8 md:p-12 rounded-[2.5rem] backdrop-blur-2xl border border-white/10 shadow-2xl transition-colors duration-1000 ${mood.cardBg}`}
+          >
+            {activeTab === 'profile' && <ProfileSection mood={mood} profile={profile} setProfile={setProfile} />}
+            {activeTab === 'aesthetic' && <AestheticSection mood={mood} setMood={setMood} />}
+            {activeTab === 'triggers' && <TriggersSection mood={mood} emotions={emotions} setEmotions={setEmotions} />}
+            {activeTab === 'privacy' && <PrivacySection mood={mood} cloudSyncEnabled={cloudSyncEnabled} setCloudSyncEnabled={setCloudSyncEnabled} />}
+            {activeTab === 'notifications' && <NotificationSection mood={mood} notifications={notifications} setNotifications={setNotifications} />}
+          </div>
+        </main>
+      </div >
+    </div >
+  );
+}
+
+/* --- Section Components --- */
+
+function ProfileSection({ mood, profile, setProfile }) {
+  const colors = ['#E5A9A9', '#A9BAE5', '#E5D4A9', '#A9E5C3', '#C3A9E5'];
+
+  return (
+    <div className="space-y-12">
+      <header>
+        <h2 className="text-2xl font-medium mb-2">Identity & Presence</h2>
+        <p className="opacity-60">How you refer to yourself within these walls.</p>
+      </header>
+
+      <div className="space-y-8 max-w-lg">
+        <div>
+          <label className="block text-sm font-medium opacity-70 mb-4">Your Essence (Avatar)</label>
+          <div className="flex gap-4">
+            {colors.map(color => (
+              <button
+                key={color}
+                onClick={() => setProfile({ ...profile, color })}
+                className="w-12 h-12 rounded-full transition-transform duration-300 hover:scale-110"
+                style={{
+                  backgroundColor: color,
+                  boxShadow: profile.color === color ? `0 0 0 4px ${mood.bg}, 0 0 0 6px ${color}` : 'none'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="group">
+            <label className="block text-xs font-medium opacity-50 uppercase tracking-wider mb-2 transition-opacity group-focus-within:opacity-100">Preferred Name</label>
+            <input
+              type="text"
+              value={profile.name}
+              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+              className="w-full bg-transparent border-b-2 border-black/10 focus:border-black/40 py-2 outline-none text-xl transition-colors"
+              placeholder="What should we call you?"
+            />
+          </div>
+
+          <div className="group">
+            <label className="block text-xs font-medium opacity-50 uppercase tracking-wider mb-2 transition-opacity group-focus-within:opacity-100">Pronouns</label>
+            <input
+              type="text"
+              value={profile.pronouns}
+              onChange={(e) => setProfile({ ...profile, pronouns: e.target.value })}
+              className="w-full bg-transparent border-b-2 border-black/10 focus:border-black/40 py-2 outline-none text-xl transition-colors"
+              placeholder="e.g. they/them"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AestheticSection({ mood, setMood }) {
+  return (
+    <div className="space-y-12">
+      <header>
+        <h2 className="text-2xl font-medium mb-2">The Atmosphere</h2>
+        <p className="opacity-60">Set the tone and visual temperature of your space.</p>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {MOODS.map(m => (
+          <button
+            key={m.id}
+            onClick={() => setMood(m)}
+            className={`
+              relative p-6 rounded-[2rem] border-2 transition-all duration-500 overflow-hidden group hover:-translate-y-1
+              ${mood.id === m.id ? 'border-current' : 'border-black/5 hover:border-black/20'}
+            `}
+          >
+            <div className="absolute inset-0 opacity-20 transition-opacity group-hover:opacity-30" style={{ backgroundColor: m.bg.replace('bg-[', '').replace(']', '') }} />
+            <div className="relative z-10 flex items-center gap-4">
+              <div className="w-8 h-8 rounded-full" style={{ backgroundColor: m.accent }} />
+              <div className="text-left">
+                <div className="font-medium text-lg">{m.name}</div>
+                {mood.id === m.id && <span className="text-xs opacity-60">Currently Active</span>}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TriggersSection({ mood, emotions, setEmotions }) {
+  const [newEmotion, setNewEmotion] = useState('');
+
+  const addEmotion = (e) => {
+    e.preventDefault();
+    if (newEmotion.trim() && !emotions.includes(newEmotion.trim())) {
+      setEmotions([...emotions, newEmotion.trim()]);
+      setNewEmotion('');
+    }
+  };
+
+  const removeEmotion = (emo) => {
+    setEmotions(emotions.filter(e => e !== emo));
+  };
+
+  return (
+    <div className="space-y-12">
+      <header>
+        <h2 className="text-2xl font-medium mb-2">Emotional Vocabulary</h2>
+        <p className="opacity-60">Curate the words you use to define your feelings.</p>
+      </header>
+
+      <div className="space-y-8">
+        <div className="flex flex-wrap gap-3">
+          {emotions.map(emo => (
+            <div
+              key={emo}
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-black/10 bg-black/5 backdrop-blur-sm transition-transform hover:-translate-y-0.5"
+            >
+              <span>{emo}</span>
+              <button
+                onClick={() => removeEmotion(emo)}
+                className="opacity-50 hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-black/10"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <form onSubmit={addEmotion} className="flex items-center gap-4 max-w-sm">
+          <input
+            type="text"
+            value={newEmotion}
+            onChange={(e) => setNewEmotion(e.target.value)}
+            placeholder="Add new emotion..."
+            className="flex-1 bg-transparent border-b-2 border-black/10 focus:border-black/40 py-2 outline-none transition-colors"
+          />
+          <button
+            type="submit"
+            disabled={!newEmotion.trim()}
+            className="p-2 rounded-full bg-black/5 hover:bg-black/10 disabled:opacity-50 transition-colors"
+          >
+            <Plus size={20} />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PrivacySection({ mood, cloudSyncEnabled, setCloudSyncEnabled }) {
+  const [eraseConfirm, setEraseConfirm] = useState('');
+  const isEraseValid = eraseConfirm.toLowerCase() === 'erase';
+
+  const exportData = () => {
+    const rawData = localStorage.getItem('diario_settings');
+    if (!rawData) return;
+
+    // Create a Blob containing the JSON data
+    const blob = new Blob([rawData], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary anchor element and trigger download
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `diario-export-${new Date().getTime()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const eraseData = () => {
+    if (isEraseValid) {
+      localStorage.removeItem('diario_settings');
+      window.location.reload();
+    }
+  };
+
+  return (
+    <div className="space-y-12">
+      <header>
+        <h2 className="text-2xl font-medium mb-2">Privacy & The Vault</h2>
+        <p className="opacity-60">Control who sees your thoughts and how your data is stored.</p>
+      </header>
+
+      <div className="space-y-10 max-w-2xl">
+        {/* Cloud Sync */}
+        <div className="flex items-start justify-between p-6 rounded-[2rem] bg-black/5">
+          <div className="max-w-md pr-8">
+            <h3 className="font-medium flex items-center gap-2 mb-1">
+              <Cloud size={18} /> Storage Preference
+            </h3>
+            <p className="text-sm opacity-60 leading-relaxed">
+              When synced to the cloud, your journal is securely backed up and available across devices. Local only means it never leaves this browser.
+            </p>
+          </div>
+          <button
+            onClick={() => setCloudSyncEnabled(!cloudSyncEnabled)}
+            className={`relative w-14 h-8 shrink-0 rounded-full transition-colors duration-300 ease-in-out ${cloudSyncEnabled ? 'bg-green-500/80' : 'bg-black/20'}`}
+          >
+            <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${cloudSyncEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
+        {/* Data Actions */}
+        <div className="space-y-4 pt-4 border-t border-black/10">
+          <h3 className="text-sm font-medium opacity-50 uppercase tracking-wider mb-4">Your Data, Your Rules</h3>
+
+          <button onClick={exportData} className="flex items-center gap-3 px-6 py-4 w-full rounded-[1.5rem] border border-black/10 hover:bg-black/5 transition-all hover:-translate-y-0.5">
+            <Download size={18} className="opacity-70" />
+            <div className="text-left">
+              <div className="font-medium">Export my Journal</div>
+              <div className="text-xs opacity-60">Download your settings and local environment as a raw JSON file.</div>
+            </div>
+          </button>
+
+          <div className="p-6 rounded-[1.5rem] border border-red-500/20 bg-red-500/5 group transition-colors focus-within:bg-red-500/10">
+            <div className="flex items-start gap-4 mb-4">
+              <Trash2 size={24} className="text-red-500/70 shrink-0" />
+              <div>
+                <div className="font-medium text-red-500/90">Erase all data</div>
+                <div className="text-xs opacity-70 mt-1 max-w-md">
+                  This action is irreversible. To confirm, please type the word <strong>"erase"</strong> below.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 md:pl-10">
+              <input
+                type="text"
+                value={eraseConfirm}
+                onChange={(e) => setEraseConfirm(e.target.value)}
+                placeholder="Type 'erase'..."
+                className="bg-transparent border-b border-red-500/30 focus:border-red-500 outline-none px-2 py-1 text-red-500 w-32 transition-colors"
+              />
+              <button
+                disabled={!isEraseValid}
+                onClick={eraseData}
+                className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${isEraseValid ? 'bg-red-500 text-white shadow-lg hover:bg-red-600 hover:scale-105' : 'bg-black/5 text-black/30 cursor-not-allowed'}`}
+              >
+                Burn the journal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationSection({ mood, notifications, setNotifications }) {
+  const updateNotifications = (updates) => {
+    setNotifications({ ...notifications, ...updates });
+  };
+
+  return (
+    <div className="space-y-12">
+      <header>
+        <h2 className="text-2xl font-medium mb-2">Reminders to Breathe</h2>
+        <p className="opacity-60">Gentle nudges to pause, reflect, and document your emotional state.</p>
+      </header>
+
+      <div className="max-w-md space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-medium">Daily Reflection Nudge</div>
+          <button
+            onClick={() => updateNotifications({ enabled: !notifications.enabled })}
+            className={`relative w-14 h-8 rounded-full transition-colors duration-300 ease-in-out ${notifications.enabled ? 'bg-black/80' : 'bg-black/20'}`}
+          >
+            <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${notifications.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
+        <div className={`transition-all duration-500 overflow-hidden ${notifications.enabled ? 'opacity-100 max-h-40' : 'opacity-30 max-h-40 pointer-events-none'}`}>
+          <label className="block text-sm font-medium opacity-70 mb-4 flex items-center gap-2">
+            <Clock size={16} /> Preferred Time
+          </label>
+
+          <div className="flex items-center gap-4 bg-black/5 p-6 rounded-[2rem] w-fit">
+            <select
+              value={notifications.hour}
+              onChange={(e) => updateNotifications({ hour: e.target.value })}
+              className="appearance-none bg-transparent text-4xl font-light outline-none cursor-pointer hover:opacity-70 transition-opacity"
+            >
+              {Array.from({ length: 24 }).map((_, i) => {
+                const h = i.toString().padStart(2, '0');
+                return <option key={h} value={h}>{h}</option>;
+              })}
+            </select>
+            <span className="text-4xl font-light opacity-50">:</span>
+            <select
+              value={notifications.minute}
+              onChange={(e) => updateNotifications({ minute: e.target.value })}
+              className="appearance-none bg-transparent text-4xl font-light outline-none cursor-pointer hover:opacity-70 transition-opacity"
+            >
+              {['00', '15', '30', '45'].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs opacity-50 mt-4">We will softly remind you at this time.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
