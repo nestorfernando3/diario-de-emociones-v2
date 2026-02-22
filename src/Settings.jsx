@@ -13,8 +13,12 @@ import {
   Trash2,
   Plus,
   X,
-  Clock
+  Clock,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from './contexts/AuthContext';
+import AuthModal from './AuthModal';
+import { supabase } from './lib/supabase';
 
 const MENU_ITEMS = [
   { id: 'profile', label: 'Identity & Presence', icon: User, desc: 'How you appear in your safe space' },
@@ -31,21 +35,33 @@ const MOODS = [
   { id: 'vapor', name: 'Vapor Clinic', bg: 'bg-[#F0EFF4]', cardBg: 'bg-[#F0EFF4]/80', text: 'text-[#18181B]', primary: '#0A0A14', accent: '#7B61FF' }
 ];
 
-// Mock BaaS logic mimicking Supabase/Firebase RLS
-const MOCK_USER_ID = "usr_94b8e3a2";
-const mockCloudSync = async (payload) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log(`[BaaS Sync] Secured transaction for user: ${MOCK_USER_ID}`);
-      console.log(`[BaaS Sync] Unified Payload Saved:`, payload);
-      resolve({ status: "success" });
-    }, 600);
-  });
+const syncProfileToCloud = async (session, payload) => {
+  if (!session?.user?.id) return;
+
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({
+      id: session.user.id,
+      name: payload.profile.name,
+      pronouns: payload.profile.pronouns,
+      color: payload.profile.color,
+      emotions: payload.emotions,
+      notifications: payload.notifications,
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) {
+    console.error("[Supabase Sync] Error syncing profile:", error.message);
+  } else {
+    console.log("[Supabase Sync] Profile saved successfully.");
+  }
 };
 
 export default function Settings() {
+  const { session, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [initDone, setInitDone] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Initialize unified state from localStorage
   const loadStoredSettings = () => {
@@ -81,17 +97,16 @@ export default function Settings() {
     // 1. Local-First Synchronization
     localStorage.setItem('diario_settings', JSON.stringify(currentState));
 
-    // 2. Cloud Sync if Enabled
-    // We skip the sync on the very first render block to avoid unnecessary network calls
+    // 2. Cloud Sync if Enabled and Authenticated
     if (skipFirstSync.current) {
       skipFirstSync.current = false;
       return;
     }
 
-    if (cloudSyncEnabled) {
-      mockCloudSync(currentState).catch(err => console.error("Cloud Error", err));
+    if (cloudSyncEnabled && session) {
+      syncProfileToCloud(session, currentState);
     }
-  }, [mood, cloudSyncEnabled, profile, emotions, notifications, initDone]);
+  }, [mood, cloudSyncEnabled, profile, emotions, notifications, initDone, session]);
 
   // Transition between tabs
   useEffect(() => {
@@ -178,12 +193,32 @@ export default function Settings() {
             {activeTab === 'profile' && <ProfileSection mood={mood} profile={profile} setProfile={setProfile} />}
             {activeTab === 'aesthetic' && <AestheticSection mood={mood} setMood={setMood} />}
             {activeTab === 'triggers' && <TriggersSection mood={mood} emotions={emotions} setEmotions={setEmotions} />}
-            {activeTab === 'privacy' && <PrivacySection mood={mood} cloudSyncEnabled={cloudSyncEnabled} setCloudSyncEnabled={setCloudSyncEnabled} />}
+            {activeTab === 'privacy' &&
+              <PrivacySection
+                mood={mood}
+                cloudSyncEnabled={cloudSyncEnabled}
+                setCloudSyncEnabled={setCloudSyncEnabled}
+                session={session}
+                signOut={signOut}
+                openAuthModal={() => setIsAuthModalOpen(true)}
+              />
+            }
             {activeTab === 'notifications' && <NotificationSection mood={mood} notifications={notifications} setNotifications={setNotifications} />}
           </div>
         </main>
-      </div >
-    </div >
+      </div>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          // Auto-enable sync if they successfully logged in
+          if (session && !cloudSyncEnabled) {
+            setCloudSyncEnabled(true);
+          }
+        }}
+      />
+    </div>
   );
 }
 
@@ -339,7 +374,7 @@ function TriggersSection({ mood, emotions, setEmotions }) {
   );
 }
 
-function PrivacySection({ mood, cloudSyncEnabled, setCloudSyncEnabled }) {
+function PrivacySection({ mood, cloudSyncEnabled, setCloudSyncEnabled, session, signOut, openAuthModal }) {
   const [eraseConfirm, setEraseConfirm] = useState('');
   const isEraseValid = eraseConfirm.toLowerCase() === 'erase';
 
@@ -368,6 +403,25 @@ function PrivacySection({ mood, cloudSyncEnabled, setCloudSyncEnabled }) {
     }
   };
 
+  const handleToggleSync = () => {
+    if (!cloudSyncEnabled) {
+      // Trying to turn ON
+      if (!session) {
+        openAuthModal();
+      } else {
+        setCloudSyncEnabled(true);
+      }
+    } else {
+      // Turning OFF
+      setCloudSyncEnabled(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setCloudSyncEnabled(false);
+  };
+
   return (
     <div className="space-y-12">
       <header>
@@ -377,21 +431,34 @@ function PrivacySection({ mood, cloudSyncEnabled, setCloudSyncEnabled }) {
 
       <div className="space-y-10 max-w-2xl">
         {/* Cloud Sync */}
-        <div className="flex items-start justify-between p-6 rounded-[2rem] bg-black/5">
-          <div className="max-w-md pr-8">
-            <h3 className="font-medium flex items-center gap-2 mb-1">
-              <Cloud size={18} /> Storage Preference
-            </h3>
-            <p className="text-sm opacity-60 leading-relaxed">
-              When synced to the cloud, your journal is securely backed up and available across devices. Local only means it never leaves this browser.
-            </p>
+        <div className="flex flex-col gap-4 p-6 rounded-[2rem] bg-black/5">
+          <div className="flex items-start justify-between">
+            <div className="max-w-md pr-8">
+              <h3 className="font-medium flex items-center gap-2 mb-1">
+                <Cloud size={18} /> Storage Preference
+              </h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                When synced to the cloud, your journal is securely backed up and available across devices. Local only means it never leaves this browser.
+              </p>
+            </div>
+            <button
+              onClick={handleToggleSync}
+              className={`relative w-14 h-8 shrink-0 rounded-full transition-colors duration-300 ease-in-out ${cloudSyncEnabled ? 'bg-green-500/80' : 'bg-black/20'}`}
+            >
+              <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${cloudSyncEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
           </div>
-          <button
-            onClick={() => setCloudSyncEnabled(!cloudSyncEnabled)}
-            className={`relative w-14 h-8 shrink-0 rounded-full transition-colors duration-300 ease-in-out ${cloudSyncEnabled ? 'bg-green-500/80' : 'bg-black/20'}`}
-          >
-            <div className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 ease-in-out ${cloudSyncEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
-          </button>
+
+          {session && (
+            <div className="flex items-center justify-between pt-4 border-t border-black/10 mt-2">
+              <div className="text-sm opacity-70">
+                Logged in as: <strong>{session.user.email}</strong>
+              </div>
+              <button onClick={handleSignOut} className="text-xs flex items-center gap-1 font-medium opacity-60 hover:opacity-100 transition-opacity text-red-600">
+                <LogOut size={14} /> Disconnect
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Data Actions */}
