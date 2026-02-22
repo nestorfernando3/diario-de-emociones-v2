@@ -10,6 +10,7 @@ import FirstAidKit from './FirstAidKit';
 
 function App() {
     const [currentView, setCurrentView] = useState('landing');
+    const [isFirstAidOpen, setIsFirstAidOpen] = useState(false);
 
     // Simple Router
     const renderView = () => {
