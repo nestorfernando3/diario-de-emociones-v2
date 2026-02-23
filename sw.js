@@ -1,12 +1,12 @@
 // sw.js
 // Basic Service Worker for Diario de Emociones PWA
 
-const CACHE_NAME = 'diario-emociones-v3';
+const CACHE_NAME = 'diario-emociones-v5';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './manifest.json',
-    './favicon.ico',
+    './icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
