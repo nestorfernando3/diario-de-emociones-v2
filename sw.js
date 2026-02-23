@@ -3,10 +3,10 @@
 
 const CACHE_NAME = 'diario-emociones-v3';
 const ASSETS_TO_CACHE = [
-    '/',
-    '/index.html',
-    '/manifest.json',
-    '/favicon.ico',
+    './',
+    './index.html',
+    './manifest.json',
+    './favicon.ico',
 ];
 
 self.addEventListener('install', (event) => {
@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
                 return response;
             }).catch(() => {
                 // Fallback if offline and not in cache
-                return caches.match('/');
+                return caches.match('./');
             });
         })
     );
