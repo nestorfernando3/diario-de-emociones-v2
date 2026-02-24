@@ -1,7 +1,7 @@
 // sw.js
 // Basic Service Worker for Diario de Emociones PWA
 
-const CACHE_NAME = 'diario-emociones-v6';
+const CACHE_NAME = 'diario-emociones-v7';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
